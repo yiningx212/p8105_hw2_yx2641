@@ -1,21 +1,82 @@
 ---
-title: "Simple document"
+title: "Homework 2"
+author: Yining Xiang
 output: html_document
 ---
 
-I'm an R Markdown document! 
+```{r setup}
+library(tidyverse)
 
-# Section 1
-
-Here's a **code chunk** that samples from 
-a _normal distribution_:
-
-```{r}
-samp = rnorm(100)
-length(samp)
+library(readr)
 ```
 
-# Section 2
 
-I can take the mean of the sample, too!
-The mean is `r mean(samp)`.
+## Problem 1
+
+```{r}
+
+```
+
+# Problem 2
+
+```{r}
+Subway_df <- read_csv("NYC_Transit_Subway_Entrance_And_Exit_Data.csv")
+Subway_df = janitor::clean_names(Subway_df)
+names(Subway_df)
+```
+retain line, station, name, station latitude / longitude, routes served, entry, vending, entrance type, and ADA compliance.
+```{r}
+SubwayCleaned_df=select( Subway_df, line, station_name, station_latitude, station_longitude, route1:route11, entry, vending, entrance_type, ada)
+SubwayCleaned_df= mutate(SubwayCleaned_df, entry = recode(entry, YES = TRUE, NO = FALSE))
+SubwayCleaned_df= mutate(SubwayCleaned_df, vending = recode(vending, YES = TRUE, NO = FALSE))
+SubwayCleaned_df= filter(SubwayCleaned_df, ada, preserve=TRUE)
+str(SubwayCleaned_df)
+```
+
+I establish a new dataframe named SubwayCleaned_df for the cleaned table. First select the columns to keep with select(). Then use mutate() and recode(), with reference from the discussion posted by Amanda Warnock, to convert the variable from double to logical. I also convert the vending variable for the following questions. Lastly, uses filter to preserve compliants only. 
+Using str(), we could see the dimension is 468*19 but the data could be further cleaned because there problems like "latitude & longitude not at same decimal place", "route 8-11 are number but 1-7 are characters". The columns route 1-11 could also be reorganized to make the table tidy. 
+
+How many distinct stations are there? 356
+```{r}
+count(distinct(Subway_df, station_name))
+```
+
+How many stations are ADA compliant? 468
+```{r}
+count(filter(Subway_df, ada, preserve=TRUE))
+```
+
+What proportion of station entrances / exits without vending allow entrance? 114/183
+```{r}
+VendingRecoded_df= mutate(Subway_df, vending = recode(vending, YES = TRUE, NO = FALSE))
+#VendingRecoded_df= mutate(Subway_df, entry = recode(entry, YES = TRUE, NO = FALSE))
+
+NoVending_df= filter(VendingRecoded_df, vending==FALSE, preserve=TRUE)
+count(NoVending_df, entry=="YES")
+count(NoVending_df)
+
+#SubwayCleaned_df= filter(SubwayCleaned_df, ada, preserve=TRUE)
+
+#prop.table(NoVending_df, )
+#proportions(NoVending_df, entry="NO")
+```
+
+Reformat data so that route number and route name are distinct variables. How many distinct stations serve the A train? Of the stations that serve the A train, how many are ADA compliant? 273
+
+```{r}
+
+SubwayReformat_df <- mutate_at(Subway_df, vars(route8, route9, route10, route11), as.character)
+str(SubwayReformat_df)
+
+SubwayReformat_df=
+  pivot_longer(
+    SubwayReformat_df, 
+    route1:route11,
+    names_to = "route_name", 
+    values_to = "route_number")
+view(SubwayReformat_df)
+
+Atrain_df= filter(SubwayReformat_df, route_number=="A")
+count(Atrain_df, ada=TRUE)
+```
+
