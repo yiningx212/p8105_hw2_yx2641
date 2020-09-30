@@ -6,7 +6,6 @@ output: html_document
 
 ```{r setup}
 library(tidyverse)
-
 library(readr)
 ```
 
@@ -49,16 +48,11 @@ count(filter(Subway_df, ada, preserve=TRUE))
 What proportion of station entrances / exits without vending allow entrance? 114/183
 ```{r}
 VendingRecoded_df= mutate(Subway_df, vending = recode(vending, YES = TRUE, NO = FALSE))
-#VendingRecoded_df= mutate(Subway_df, entry = recode(entry, YES = TRUE, NO = FALSE))
 
 NoVending_df= filter(VendingRecoded_df, vending==FALSE, preserve=TRUE)
 count(NoVending_df, entry=="YES")
 count(NoVending_df)
 
-#SubwayCleaned_df= filter(SubwayCleaned_df, ada, preserve=TRUE)
-
-#prop.table(NoVending_df, )
-#proportions(NoVending_df, entry="NO")
 ```
 
 Reformat data so that route number and route name are distinct variables. How many distinct stations serve the A train? Of the stations that serve the A train, how many are ADA compliant? 273
@@ -79,4 +73,97 @@ view(SubwayReformat_df)
 Atrain_df= filter(SubwayReformat_df, route_number=="A")
 count(Atrain_df, ada=TRUE)
 ```
+
+## Problem 3
+
+First, clean the data in pols-month.csv. Use separate() to break up the variable mon into integer variables year, month, and day; replace month number with month name; create a president variable taking values gop and dem, and remove prez_dem and prez_gop; and remove the day variable.
+```{r}
+pols_month <- read_csv("fivethirtyeight_datasets/pols-month.csv")
+
+polseperated_df=separate(pols_month, mon, sep = "-", into = c("year", "month", "date"))
+
+polseperated_df=
+  mutate(polseperated_df, month= month.name[as.numeric(month)])
+
+polseperated_df <- mutate(polseperated_df, prez_gop= recode(prez_gop, "1" = "gop", "0"=""))
+polseperated_df <- mutate(polseperated_df, prez_dem= recode(prez_dem, "1" = "dem", "0"=""))
+polseperated_df <- mutate_at(polseperated_df, vars(prez_dem, prez_gop), as.character)
+
+polseperated_df= 
+  unite(polseperated_df, prez_gop, prez_dem, col="president", sep="", remove=TRUE)
+  
+polseperated_df <- unite(polseperated_df,year, month, col="time", remove=TRUE)
+polseperated_df <- polseperated_df[-c(2)]
+
+view(polseperated_df)
+
+```
+
+Second, clean the data in snp.csv using a similar process to the above. For consistency across datasets, arrange according to year and month, and organize so that year and month are the leading columns.
+```{r}
+snp <- read_csv("fivethirtyeight_datasets/snp.csv")
+
+snpCleaned_df=separate(snp, date, sep = "/", into = c("month", "data", "year"))
+snpCleaned_df=
+  mutate(snpCleaned_df, month= month.name[as.numeric(month)])
+  
+snpCleaned_df= snpCleaned_df[c(3,1,2,4)]
+snpCleaned_df <- unite(snpCleaned_df, year,  month, col="time", remove=TRUE)
+view(snpCleaned_df)
+
+```
+
+Third, tidy the unemployment data so that it can be merged with the previous datasets. This process will involve switching from “wide” to “long” format; ensuring that key variables have the same name; and ensuring that key variables take the same values.
+```{r}
+unemployment <- read_csv("fivethirtyeight_datasets/unemployment.csv")
+view(unemployment)
+
+unemployment=
+  pivot_longer(
+    unemployment,
+    Jan:Dec, 
+    names_to= "month",
+    values_to= "percentage_of_unemployment"
+  )
+
+month_df=
+  tibble(
+    month= c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
+    month_name= month.name
+  )
+
+unemployment=
+  left_join(unemployment, month_df, by= "month")
+unemployment= unemployment[c(1,4,3)]
+
+unemployment <- unite(unemployment, Year, month_name, col="time", remove=TRUE)
+view(unemployment)
+
+```
+
+Join the datasets by merging snp into pols, and merging unemployment into the result.
+```{r}
+pol_snp <- left_join(polseperated_df, snpCleaned_df, by = "time")
+pol_snp_une <- left_join(pol_snp, unemployment, by = "time")
+view(pol_snp_une)
+```
+
+Write a short paragraph about these datasets. Explain briefly what each dataset contained, and describe the resulting dataset (e.g. give the dimension, range of years, and names of key variables).
+
+These datasets are all on observations/ statistics overtime. However some with different time-lapse and some with different form of date noted. Pol.csv contains the political stance of the major political figures by month. Snp.csv gives observation on stock behavior. Unemplpyment.csv denotes the record of unemployment for each month. 
+By merging the three datasets, we have tidier and clearer dataset, with higher dimension but smaller range of years as not all variables are recorded for all years. The resulting dataset could give us a congregated understanding of the relationship between political status and economic status. There are three other datasets that are not used here (cpi, gdp and recessions), could give us more detailed information on economic behavior. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
